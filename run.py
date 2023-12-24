@@ -2,10 +2,12 @@ from threading import Thread
 from time import sleep
 
 from gpiozero import LED
+import board
+import adafruit_dht
+
 
 from bottle import Bottle, Route, template
 from bottle import run as bottle_run
-
 
 
 class Server(Bottle):
@@ -20,6 +22,43 @@ class Server(Bottle):
     def add_route(self, rule, http_method, callback):
         route = Route(self, rule, http_method, callback)
         super().add_route(route)
+
+
+class ClimatePlugin:
+    """
+    circuit:
+    dht11 pins left to right:
+        (1) signal -> GPIO (pin7) => board.Dx where x => GPIO number
+        (2) VCC -> 5Volt (pin2)
+        (3) negativ -> Ground (pin6)
+
+    """
+    def __init__(self, app):
+        self.device = adafruit_dht.DHT11(board.D4, use_pulseio=False)
+        self.humidity = 0.0
+        self.temperature = 0.0
+        # dhtDevice.exit()
+ 
+    def update(self):
+        self.temperature = self.device.temperature
+        self.humidity = self.device.humidity
+
+    def exit(self):
+        self.device.exit()
+
+
+    def get_climate(self):
+        return template('<h1>current climate</h1><h2>Temperature: {{temp}}° </h2><h2>Humidity:{{ hum }} %</h2>', temp=self.temperature, hum=self.humidity)
+
+
+    def init_routes(self):
+        endpoint = '/sensor'
+        routes = [
+                ("/climate", "GET", self.get_climate)
+            ]
+
+        return endpoint, routes
+
 
 
 
@@ -47,6 +86,10 @@ class LedPlugin:
         else:
             self.led.off()
 
+PLUGINS = [
+        # LedPlugin,
+        SensorPlugin
+        ]
 
 class App:
     running = False
@@ -71,9 +114,9 @@ class App:
 
 
     def _init_plugins(self):
-        led_plugin = LedPlugin(self)
-        self.plugins.append(led_plugin)
-
+        for plugin_cls in PLUGINS:
+            plugin = plugin_cls(self)
+            self.plugins.append(plugin)
 
     def _init_routes(self):
         for plugin in self.plugins:
