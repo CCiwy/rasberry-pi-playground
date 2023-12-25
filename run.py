@@ -24,7 +24,7 @@ class Server(Bottle):
         super().add_route(route)
 
 
-class ClimatePlugin:
+class SensorPlugin:
     """
     circuit:
     dht11 pins left to right:
@@ -87,7 +87,7 @@ class LedPlugin:
             self.led.off()
 
 PLUGINS = [
-        # LedPlugin,
+        LedPlugin,
         SensorPlugin
         ]
 
@@ -147,7 +147,7 @@ if __name__ == '__main__':
     while True:
         try:
             app.update()
-        except KeyBoardInterupt:
+        except KeyboardInterrupt:
             app.exit()
             exit(0)
 
